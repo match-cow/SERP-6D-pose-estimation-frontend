@@ -106,7 +106,3 @@ with r2col1:
 
 if st.button("Run Foundation Pose"):
     st.switch_page(st.session_state.pose_pg)
-
-
-    
-
