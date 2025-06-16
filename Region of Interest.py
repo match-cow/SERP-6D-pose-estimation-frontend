@@ -25,7 +25,6 @@ with st.container(key = 'upload', border = True):
             st.switch_page(st.session_state.cam_pg)
         else:
             st.error('Please select an image to proceed')
-        pass
 
 with st.container(key = 'draw', border = True):
     st.write('Draw Region of interest.')

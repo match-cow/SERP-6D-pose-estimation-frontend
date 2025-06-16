@@ -103,6 +103,7 @@ with r2col1:
     st.session_state.cam_json = {"intrinsics": intrinsics_val.copy(), "depthscale": depthscale_val}
     st.header('Final JSON')
     st.json(st.session_state.cam_json)
+    st.session_state.intrinsics = intrinsics_val.copy()
 
 if st.button("Run Foundation Pose"):
     st.switch_page(st.session_state.pose_pg)
