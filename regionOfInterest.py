@@ -22,7 +22,7 @@ with st.container(key = 'upload', border = True):
 
     if st.button("Continue with uploaded ROI"):
         if uploaded_file:
-            st.switch_page(st.session_state.cam_pg)
+            st.switch_page(st.session_state.obj_pg)
         else:
             st.error('Please select an image to proceed')
 
@@ -54,37 +54,6 @@ with st.container(key = 'draw', border = True):
         key="canvas"
     )
 
-    # # Do something interesting with the image data and paths
-    # if canvas_result.image_data is not None:
-    #     st.image(canvas_result.image_data)
-    # if canvas_result.json_data is not None:
-    #     objects = pd.json_normalize(canvas_result.json_data["objects"]) # need to convert obj to str because PyArrow
-    #     for col in objects.select_dtypes(include=['object']).columns:
-    #         objects[col] = objects[col].astype("str")
-    #     st.dataframe(objects)
-    # END OF OLD CODE
-
-    # NEW CODE
-    # Load background image
-    # bg_image = Image.open("Z:\\dummy\\SERP-6D-pose-estimation-frontend\\test images\\Sample-images-from-the-Robot-Scenario-data-collection.png").convert("RGBA")
-    # img_width, img_height = bg_image.size
-
-    # Display the background image
-    # st.image(bg_image, caption="Background Image", use_column_width=False)
-
-    # Create a transparent canvas
-    # canvas_result = st_canvas(
-    #     fill_color = "rgba(255, 165, 0, 0.3)",
-    #     stroke_width = 3,
-    #     stroke_color="#FF0000",
-    #     background_color=None,
-    #     update_streamlit=True,
-    #     height=st.session_state.img_height,
-    #     width=st.session_state.img_width,
-    #     drawing_mode="freedraw",  # You can switch to 'rect', 'circle', etc.
-    #     key="canvas_no_bg"
-    # )
-
     # Merge the drawing with the background
     if canvas_result.image_data is not None:
         drawn_image = Image.fromarray((canvas_result.image_data).astype("uint8")).convert("RGBA")
@@ -105,7 +74,7 @@ with st.container(key = 'draw', border = True):
                 st.session_state.roi = final_bw.convert('L')
 
             if st.button("Continue with custom ROI"):
-                st.switch_page(st.session_state.cam_pg)
+                st.switch_page(st.session_state.obj_pg)
 
     buffer = BytesIO()
     final_bw.save(buffer, format="PNG")

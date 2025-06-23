@@ -28,6 +28,8 @@ roi_base64 = base64.b64encode(buffered_roi.getvalue()).decode('utf-8')
 roi_array = np.frombuffer(base64.b64decode(roi_base64), np.uint8)
 roi_cv2 = cv2.imdecode(roi_array, cv2.IMREAD_GRAYSCALE)  # binary mask of object
 
+obj_base64 = base64.b64encode(buffered_img.getvalue()).decode('utf-8')
+
 # Camera intrinsics
 K = st.session_state.cam_json["intrinsics"]  # e.g., [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
 depth_scale = st.session_state.cam_json["depthscale"]  # e.g., if depth is in mm, scale to meters
@@ -36,32 +38,25 @@ depth_scale = st.session_state.cam_json["depthscale"]  # e.g., if depth is in mm
 st.write(len(img_base64))
 st.write(len(depth_base64))
 st.write(len(roi_base64))
+st.write(len(obj_base64))
 
 request_dict = {
-    "request_summary": {
-        "camera_matrix": K,
-        "images_count": 1
-    },
-    "full_request_data": {
-        "camera_matrix": K,
-        "images": {
-            "rgb": [
-                img_base64
-            ],
-            "depth_map": [
-                depth_base64
-            ],
-            "region_of_interest": [
-                roi_base64
-            ]
-        },
-        "depthscale": depth_scale
-    }
+    "camera_matrix": K,
+    "images": [
+        {
+        "filename": st.session_state.filename,
+        "rgb": img_base64,
+        "depth_map": depth_base64
+        }
+    ],
+    "mesh": obj_base64,
+    "mask": roi_base64,
+    "depthscale": depth_scale
 }
 
 request = json.dumps(request_dict)
 
-url = "localhost:5000/pose/estimate"
+url = "http://localhost:5000/pose/estimate"
 
 response = requests.post(url, json = request)
 #st.write(response.status_code)
