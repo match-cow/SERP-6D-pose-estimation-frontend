@@ -28,7 +28,7 @@ roi_base64 = base64.b64encode(buffered_roi.getvalue()).decode('utf-8')
 roi_array = np.frombuffer(base64.b64decode(roi_base64), np.uint8)
 roi_cv2 = cv2.imdecode(roi_array, cv2.IMREAD_GRAYSCALE)  # binary mask of object
 
-obj_base64 = base64.b64encode(buffered_img.getvalue()).decode('utf-8')
+obj_base64 = base64.b64encode(st.session_state.mesh).decode('utf-8')
 
 # Camera intrinsics
 K = st.session_state.cam_json["intrinsics"]  # e.g., [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
@@ -46,7 +46,7 @@ request_dict = {
         {
         "filename": st.session_state.filename,
         "rgb": img_base64,
-        "depth_map": depth_base64
+        "depth": depth_base64
         }
     ],
     "mesh": obj_base64,

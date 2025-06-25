@@ -1,0 +1,6 @@
+streamlit
+streamlit-drawable-canvas
+open3d
+opencv-python
+matplotlib
+trimesh

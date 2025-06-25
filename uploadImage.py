@@ -13,7 +13,7 @@ with st.container(key = 'upload', border = True):
         st.session_state.img = image
         st.image(st.session_state.img)
         st.session_state.img_width, st.session_state.img_height = image.size
-        st.session_state.filename = uploaded_file.name
+        st.session_state.filename = uploaded_file.name.split('.')[0]
 
     if st.button("Continue"):
         if uploaded_file:
