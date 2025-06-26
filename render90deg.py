@@ -86,7 +86,47 @@ t = T[:3, 3].reshape(3, 1)
 
 print(R)
 # 2D Overlay
-overlay = draw_axes_on_image(rgb_image, K, R, t)
+transformed = T.copy()
+transformed[:3, 3] *= -1
+transformed = np.linalg.inv(transformed)
+
+
+roty = trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0])
+rotz = trimesh.transformations.rotation_matrix(np.pi/180 * 80.9, [0,0,1])
+world = roty @ rotz
+
+# === Load 3D mesh ===
+trimesh_obj.apply_scale(0.001)
+mesh = pyrender.Mesh.from_trimesh(trimesh_obj, smooth=False)
+
+# === Scene Setup ===
+scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3])
+scene.add(camera, pose=transformed)
+scene.add(mesh, pose=world)
+camera = pyrender.IntrinsicsCamera(fx,fy,cx,cy, znear=0.001, zfar=10.0)
+
+light = pyrender.DirectionalLight(color=np.ones(3), intensity=2.0)
+scene.add(light, pose=transformed)
+
+# === Render Offscreen ===
+r = pyrender.OffscreenRenderer(viewport_width=w, viewport_height=h)
+color, depth = r.render(scene)
+r.delete()
+
+# === Load background RGB image
+bg = rgb_image
+bg = cv2.resize(bg, (w, h))
+bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+
+# === Create mask from depth (where model is visible)
+mask = (depth > 0)
+
+# === Composite model onto background
+composite = bg.copy()
+composite[mask] = color[mask]
+
+# === Save result
+overlay = draw_axes_on_image(composite, K, R, t)
 
 # 3D Visualization Scatter
 fig = plt.figure(figsize=(10, 5))
@@ -107,102 +147,12 @@ ax.view_init(elev=30, azim=45)
 
 # 2D overlay
 ax2 = fig.add_subplot(122)
-ax2.imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+ax2.imshow(overlay)
 ax2.set_title("2D Pose Overlay")
 ax2.axis("off")
 
+cv2.imwrite("output.png" , cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+print("Saved")
+
 plt.tight_layout()
 plt.show()
-
-#----------------
-#3D Visualization open3d
-'''renderer = o3d.visualization.rendering.OffscreenRenderer(w, h)
-material = o3d.visualization.rendering.MaterialRecord()
-material.shader = "defaultLit"
-extrinsic = np.linalg.inv(T)  # Open3D expects camera-to-world
-
-renderer.scene.set_background([0, 0, 0, 0]) # transparent background
-renderer.scene.add_geometry("mesh", mesh, material)
-
-renderer.setup_camera(intrinsic, extrinsic)
-
-mesh_image = renderer.render_to_image()
-mesh_image_np = np.asarray(mesh_image)
-
-rendered_rgb = mesh_image_np[:, :, :3]
-
-alpha = mesh_image_np[:, :, 3:] / 255.0
-foreground = (rendered_rgb * alpha).astype(np.uint8)
-background = (rgb_image * (1 - alpha)).astype(np.uint8)
-overlay = cv2.add(foreground, background)
-
-cv2.imshow("3D Overlay", overlay)
-cv2.waitKey(0)
-cv2.destroyAllWindows()'''
-
-#-----------------------------
-# --- Set up pyrender scene ---
-# Convert from OpenCV to OpenGL-style (pyrender)
-flip_z = np.eye(4)
-flip_z[2, 2] = -1
-
-T_fixed = T @ flip_z
-
-scene = pyrender.Scene(bg_color=[0, 0, 0, 255], ambient_light=[0.3, 0.3, 0.3])
-scene.add(mesh, pose=T_fixed)
-scene.add(camera, pose=np.eye(4))  # Camera at origin
-
-# Optional: Add light for better shading
-# light = pyrender.DirectionalLight(color=np.ones(3), intensity=150.0)
-# scene.add(light, pose=np.eye(4))
-
-# --- Render the scene ---
-renderer = pyrender.OffscreenRenderer(viewport_width=w, viewport_height=h)
-color_render, _ = renderer.render(scene)
-renderer.delete()
-
-# --- Overlay rendered mesh on background image ---
-blended = cv2.addWeighted(color_render, 0.2, rgb_image, 0.8, 0)
-
-# --- Display or save result ---
-cv2.imwrite("rendered.png", color_render)
-cv2.imshow("Render Only", color_render)
-cv2.waitKey(0)
-
-cv2.imshow("3D Overlay", blended)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
-
-#------------------
-### THis is normal 3d 
-o3d.visualization.gui.Application.instance.initialize()
-mesh = o3d.io.read_triangle_mesh("C:/Users/Bohori/Trial Data/test data/Ql4i/000049/Ql4i.ply")
-mesh.transform(T)
-# Coordinate frame for reference
-frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-# Show both
-o3d.visualization.draw_geometries([frame, mesh])
-#--------------
-mesh.compute_vertex_normals()
-
-rgb_image = cv2.resize(rgb_image, (w, h))
-rgb_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB)
-
-renderer = o3d.visualization.rendering.OffscreenRenderer(w,h)
-scene = renderer.scene
-scene.set_background(background_color = np.array([0,0,0,1]))
-
-material = o3d.visualization.rendering.MaterialRecord()
-material.shader = "defaultList"
-scene.add_geometry('model', mesh, material)
-
-scene.camera.setup_camera(intrinsic, T, mesh.get_axis_aligned_bounding_box())
-
-rendered = renderer.redner_to_image()
-rendered_np = np.asarray(rendered)
-
-alpha_mask = (rendered_np > 0).any(axis = 2)
-final_image = rgb_image.copy()
-final_image[alpha_mask] = rendered_np[alpha_mask]
-Image.fromarray(final_image).save("output.png")
