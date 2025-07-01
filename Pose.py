@@ -63,12 +63,12 @@ request = json.dumps(request_dict)
 
 url = "http://localhost:5000/pose/estimate"
 
-#response = requests.post(url, json = request)
-#st.write(response.status_code)
-#if response.status_code:
-if True:
-    #response_json = response.json()
-    #st.write(response_json)
+response = requests.post(url, json = request)
+st.write(response.status_code)
+if response.status_code:
+#if True:
+    response_json = response.json()
+    st.write(response_json)
 
     # Camera intrinsics
     K = np.array(K)
@@ -102,13 +102,13 @@ if True:
     trimesh_obj = trimesh.load(mesh_io, file_type = 'ply')
     mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
 
-    #T = np.array(response_json["transformation_matrix"])
-    T = np.array([
-    [6.441221833229064941e-01, 7.646285891532897949e-01, -2.120633423328399658e-02, 1.071708276867866516e-03],  
-    [6.352801322937011719e-01, -5.501901507377624512e-01, -5.419494509696960449e-01, -1.981154456734657288e-02],  
-    [-4.260576665401458740e-01, 3.356097936630249023e-01, -8.401432633399963379e-01, 5.749665498733520508e-01],
-    [0.0, 0.0, 0.0, 1.0]
-        ])  
+    T = np.array(response_json["transformation_matrix"])
+    # T = np.array([
+    # [6.441221833229064941e-01, 7.646285891532897949e-01, -2.120633423328399658e-02, 1.071708276867866516e-03],  
+    # [6.352801322937011719e-01, -5.501901507377624512e-01, -5.419494509696960449e-01, -1.981154456734657288e-02],  
+    # [-4.260576665401458740e-01, 3.356097936630249023e-01, -8.401432633399963379e-01, 5.749665498733520508e-01],
+    # [0.0, 0.0, 0.0, 1.0]
+    #     ])  
     # Extract pose
     R = T[:3, :3]
     t = T[:3, 3].reshape(3, 1)

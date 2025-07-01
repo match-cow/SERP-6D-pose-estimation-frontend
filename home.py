@@ -5,10 +5,10 @@ st.set_page_config(layout="wide")
 st.title("Intuitive 6D Pose Estimation")
 
 if 'imgUpload_pg' not in st.session_state:
-   st.session_state.imgUpload_pg = st.Page("uploadImage.py", icon = ':material/arrow_upload_progress:')
+   st.session_state.imgUpload_pg = st.Page("uploadImage.py", icon = ':material/add_photo_alternate:')
 
 if 'depthUpload_pg' not in st.session_state:
-   st.session_state.depthUpload_pg = st.Page("uploadDepthMap.py", icon = ':material/arrow_upload_ready:')
+   st.session_state.depthUpload_pg = st.Page("uploadDepthMap.py", icon = ':material/gradient:')
 
 if 'roi_pg' not in st.session_state:
    st.session_state.roi_pg = st.Page("regionOfInterest.py", icon = ':material/lasso_select:')

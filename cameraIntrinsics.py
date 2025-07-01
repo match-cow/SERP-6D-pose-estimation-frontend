@@ -1,8 +1,8 @@
 import streamlit as st
 import json
 
-r1col1, r1col2 = st.columns(2, gap = "medium", border = True)
-r2col1, r2col2 = st.columns(2, gap = "medium", border = True)
+r1col1, r1col2 = st.columns(2, gap = "medium")
+r2col1, r2col2 = st.columns(2, gap = "medium")
 
 depthscale_val = 0
 intrinsics_val = [[0,0,0],[0,0,0],[0,0,0]]
