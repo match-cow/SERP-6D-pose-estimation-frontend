@@ -6,6 +6,9 @@ import requests
 import json
 import numpy as np
 import cv2
+
+# import os
+# os.environ["PYOPENGL_PLATFORM"] = "egl"
 import pyrender
 import trimesh
 
@@ -14,7 +17,7 @@ st.session_state.img.save(buffered_img, format = 'PNG')
 img_base64 = base64.b64encode(buffered_img.getvalue()).decode('utf-8')
 img_array = np.frombuffer(base64.b64decode(img_base64), np.uint8)
 img_cv2 = cv2.imdecode(img_array, cv2.IMREAD_COLOR)  # shape: (H, W, 3)
-w, h = img_cv2.shape
+w, h = st.session_state.img_width, st.session_state.img_height
 
 buffered_depth = BytesIO()
 st.session_state.depthMap.save(buffered_depth, format = 'PNG')
@@ -60,11 +63,12 @@ request = json.dumps(request_dict)
 
 url = "http://localhost:5000/pose/estimate"
 
-response = requests.post(url, json = request)
+#response = requests.post(url, json = request)
 #st.write(response.status_code)
-if response.status_code == 200:
-    response_json = response.json()
-    st.write(response_json)
+#if response.status_code:
+if True:
+    #response_json = response.json()
+    #st.write(response_json)
 
     # Camera intrinsics
     K = np.array(K)
@@ -98,7 +102,13 @@ if response.status_code == 200:
     trimesh_obj = trimesh.load(mesh_io, file_type = 'ply')
     mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
 
-    T = np.array(response_json["transformation_matrix"])
+    #T = np.array(response_json["transformation_matrix"])
+    T = np.array([
+    [6.441221833229064941e-01, 7.646285891532897949e-01, -2.120633423328399658e-02, 1.071708276867866516e-03],  
+    [6.352801322937011719e-01, -5.501901507377624512e-01, -5.419494509696960449e-01, -1.981154456734657288e-02],  
+    [-4.260576665401458740e-01, 3.356097936630249023e-01, -8.401432633399963379e-01, 5.749665498733520508e-01],
+    [0.0, 0.0, 0.0, 1.0]
+        ])  
     # Extract pose
     R = T[:3, :3]
     t = T[:3, 3].reshape(3, 1)
@@ -146,6 +156,8 @@ if response.status_code == 200:
     # === Save result
     overlay = draw_axes_on_image(composite, K, R, t)
 
-    st.image(cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+    #st.image(cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+    st.image(overlay, cv2.COLOR_RGB2BGR)
+
 else:
     st.error("Error! JSON Responsde Code: "+str(response.status_code))
