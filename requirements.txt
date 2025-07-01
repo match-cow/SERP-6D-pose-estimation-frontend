@@ -1,6 +1,7 @@
-streamlit
+streamlit==1.40.0
 streamlit-drawable-canvas
 open3d
 opencv-python
 matplotlib
 trimesh
+pyrender
