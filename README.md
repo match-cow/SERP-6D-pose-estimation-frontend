@@ -104,9 +104,3 @@ This JSON structure is sent to the pose estimation API.
 - ```mask```: Base64 encoded string of the Region of Interest mask.
 
 - ```depthscale```: A float value representing the depth scale.
-
-##  📄 License
-
-This project is licensed under the MIT License.
-
-### Developed by: [Alaqmar Bohori]
