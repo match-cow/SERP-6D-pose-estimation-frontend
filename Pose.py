@@ -7,10 +7,9 @@ import json
 import numpy as np
 import cv2
 
-"""
-Use the commented code below if running on a headless environment.
-Ensure to run the code BEFORE importing trimesh and pyrender.
-"""
+# Use the commented code below if running on a headless environment.
+# Ensure to run the code BEFORE importing trimesh and pyrender.
+
 # import os
 # os.environ["PYOPENGL_PLATFORM"] = "egl"
 
@@ -71,105 +70,110 @@ request = json.dumps(request_dict)
 
 url = "http://localhost:5000/foundationpose"
 
-response = requests.post(url, json=request)
-if response.status_code == 200:
-    response_json = response.json()
-    st.write(response_json)
+try:
+    response = requests.post(url, json=request)
 
-    K = np.array(K)
+    if response.status_code == 200:
+        response_json = response.json()
+        st.write(response_json)
 
-    fx, fy = K[0, 0], K[1, 1]
-    cx, cy = K[0, 2], K[1, 2]
+        K = np.array(K)
 
-    camera = pyrender.IntrinsicsCamera(fx=fx, fy=fy, cx=cx, cy=cy)
+        fx, fy = K[0, 0], K[1, 1]
+        cx, cy = K[0, 2], K[1, 2]
 
-    # FUNCTIONS
-    def project_point(point, K):
-        x, y, z = point
-        u = (K[0, 0] * x / z) + K[0, 2]
-        v = (K[1, 1] * y / z) + K[1, 2]
-        return int(round(u)), int(round(v))
+        camera = pyrender.IntrinsicsCamera(fx=fx, fy=fy, cx=cx, cy=cy)
 
-    def draw_axes_on_image(image, K, R, t, axis_len=0.1):
-        img = image.copy()
-        origin = t.flatten()
+        # FUNCTIONS
+        def project_point(point, K):
+            x, y, z = point
+            u = (K[0, 0] * x / z) + K[0, 2]
+            v = (K[1, 1] * y / z) + K[1, 2]
+            return int(round(u)), int(round(v))
 
-        axes = [origin + R[:, i] * axis_len for i in range(3)]  # X, Y, Z
-        colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0)]  # BGR
-        origin_2d = project_point(origin, K)
+        def draw_axes_on_image(image, K, R, t, axis_len=0.1):
+            img = image.copy()
+            origin = t.flatten()
 
-        for pt, color in zip(axes, colors):
-            pt_2d = project_point(pt, K)
-            cv2.line(img, origin_2d, pt_2d, color, 2)
+            axes = [origin + R[:, i] * axis_len for i in range(3)]  # X, Y, Z
+            colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0)]  # BGR
+            origin_2d = project_point(origin, K)
 
-        return img
+            for pt, color in zip(axes, colors):
+                pt_2d = project_point(pt, K)
+                cv2.line(img, origin_2d, pt_2d, color, 2)
 
-    trimesh_obj = trimesh.load(mesh_io, file_type="ply")
-    mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
+            return img
 
-    T = np.array(response_json["transformation_matrix"])
+        trimesh_obj = trimesh.load(mesh_io, file_type="ply")
+        mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
 
-    # Extract rotation
-    R = T[:3, :3]
-    t = T[:3, 3].reshape(3, 1)
+        T = np.array(response_json["transformation_matrix"])
 
-    transformed = (
-        np.array(
-            [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]], dtype=np.float32
+        # Extract rotation
+        R = T[:3, :3]
+        t = T[:3, 3].reshape(3, 1)
+
+        transformed = (
+            np.array(
+                [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
+                dtype=np.float32,
+            )
+            @ T
+        )  # Transformation to account for axes negation
+
+        world = np.eye(4)
+
+        # === Load 3D mesh ===
+        trimesh_obj.apply_scale(0.001)
+        mesh = pyrender.Mesh.from_trimesh(trimesh_obj, smooth=False)
+
+        # === Scene Setup ===
+        scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3])
+        scene.add(camera, pose=world)
+        scene.add(mesh, pose=transformed)
+        camera = pyrender.IntrinsicsCamera(fx, fy, cx, cy, znear=0.001, zfar=10.0)
+
+        light = pyrender.DirectionalLight(color=np.ones(3), intensity=2.0)
+        scene.add(light, pose=transformed)
+
+        # === Render Offscreen ===
+        r = pyrender.OffscreenRenderer(viewport_width=w, viewport_height=h)
+        color, depth = r.render(scene)
+        r.delete()
+
+        # === Load background RGB image
+        bg = img_cv2
+        bg = cv2.resize(bg, (w, h))
+        bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+
+        # === Create mask from depth (where model is visible)
+        mask = depth > 0
+
+        # === Composite model onto background
+        composite = bg.copy()
+        composite[mask] = color[mask]
+
+        # === Save result
+        overlay = draw_axes_on_image(composite, K, R, t)
+
+        st.image(overlay, cv2.COLOR_RGB2BGR)
+
+        buffer = BytesIO()
+        overlay.save(
+            buffer, format="PNG"
+        )  # Provisional file creation, if user wishes to download
+        buffer.seek(0)
+
+        st.download_button(
+            label="Download Pose",
+            data=buffer,
+            file_name=f"{st.session_state.filename}_pose.png",
+            mime="image/png",
+            icon=":material/download:",
         )
-        @ T
-    ) # Transformation to account for axes negation
 
-    world = np.eye(4)
-
-    # === Load 3D mesh ===
-    trimesh_obj.apply_scale(0.001)
-    mesh = pyrender.Mesh.from_trimesh(trimesh_obj, smooth=False)
-
-    # === Scene Setup ===
-    scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3])
-    scene.add(camera, pose=world)
-    scene.add(mesh, pose=transformed)
-    camera = pyrender.IntrinsicsCamera(fx, fy, cx, cy, znear=0.001, zfar=10.0)
-
-    light = pyrender.DirectionalLight(color=np.ones(3), intensity=2.0)
-    scene.add(light, pose=transformed)
-
-    # === Render Offscreen ===
-    r = pyrender.OffscreenRenderer(viewport_width=w, viewport_height=h)
-    color, depth = r.render(scene)
-    r.delete()
-
-    # === Load background RGB image
-    bg = img_cv2
-    bg = cv2.resize(bg, (w, h))
-    bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-
-    # === Create mask from depth (where model is visible)
-    mask = depth > 0
-
-    # === Composite model onto background
-    composite = bg.copy()
-    composite[mask] = color[mask]
-
-    # === Save result
-    overlay = draw_axes_on_image(composite, K, R, t)
-
-    st.image(overlay, cv2.COLOR_RGB2BGR)
-
-    buffer = BytesIO()
-    overlay.save(
-        buffer, format="PNG"
-    )  # Provisional file creation, if user wishes to download
-    buffer.seek(0)
-
-    st.download_button(
-        label="Download Pose",
-        data=buffer,
-        file_name=f"{st.session_state.filename}_pose.png",
-        mime="image/png",
-        icon=":material/download:",
-    )
-
-else:
-    st.error("Error! JSON Responsde Code: " + str(response.status_code))
+    else:
+        st.error("Error! JSON Responsde Code: " + str(response.status_code))
+except:
+    st.error("Failed to establish connection. Check URL and/or server status.")
