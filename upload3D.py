@@ -1,16 +1,24 @@
 import streamlit as st
 import tempfile
 import open3d as o3d
+
+
 @st.cache_data
 def displayImage(img):
     st.image(img)
 
-with st.container(key = 'upload', border = True):
-    uploaded_file = st.file_uploader("Upload a 3D file", type=["ply"])
+
+st.header("Upload a 3D Model")
+with st.container(key="upload", border=True):
+    uploaded_file = st.file_uploader(
+        "Upload a 3D file", type=["ply"]
+    )  # File type limited to ply, as discussed while creating API
 
     if uploaded_file:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.ply') as tmp_file:
-            tmp_file.write(uploaded_file.read())
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".ply") as tmp_file:
+            tmp_file.write(
+                uploaded_file.read()
+            )  # Creating temp file to display some feedback data
             temp_file_path = tmp_file.name
             uploaded_file.seek(0)
             st.session_state.mesh = uploaded_file.read()
@@ -18,10 +26,10 @@ with st.container(key = 'upload', border = True):
         mesh = o3d.io.read_triangle_mesh(temp_file_path)
         mesh.compute_vertex_normals()
 
-        print('start2', st.session_state.mesh, 'session state')
-        print(mesh, 'var')
+        print("start2", st.session_state.mesh, "session state")
+        print(mesh, "var")
 
-        st.write(f"Loaded mesh: `{uploaded_file.name}`")
+        # Providing some feedback since displaying the 3D Model is not possible
         st.write(f"- Vertices: {len(mesh.vertices)}")
         st.write(f"- Normals: {len(mesh.vertex_normals)}")
         st.write(f"- Triangles: {len(mesh.triangles)}")
@@ -33,5 +41,5 @@ with st.container(key = 'upload', border = True):
         if uploaded_file:
             st.switch_page(st.session_state.cam_pg)
         else:
-            st.error('Please select a 3D file to proceed')
+            st.error("Please select a 3D file to proceed")
         pass
