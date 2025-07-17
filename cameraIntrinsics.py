@@ -130,9 +130,34 @@ with r2col1:
     st.session_state.intrinsics = intrinsics_val.copy()
 
 if st.button("Run Foundation Pose"):
+    errorMsg = ", and come back to this page to run foundation pose"
+    _flag = True
+
     if depthscale_val == 0:
         st.error("Depthscale is 0")
-    elif intrinsics_val == [[0, 0, 0], [0, 0, 0], [0, 0, 0]]:
+        _flag = False
+    if intrinsics_val == [[0, 0, 0], [0, 0, 0], [0, 0, 0]]:
         st.error("Invalid Camera Intrinsics")
-    else:
+        _flag = False
+    if (
+        "img" not in st.session_state
+        or "img_height" not in st.session_state
+        or "img_width" not in st.session_state
+        or "filename" not in st.session_state
+    ):
+        st.error("Upload a RGB Image" + errorMsg)
+        _flag = False
+    if "depthMap" not in st.session_state:
+        st.error("Upload a depth map" + errorMsg)
+        _flag = False
+    if "roi" not in st.session_state:
+        st.error("Upload a mask" + errorMsg)
+        _flag = False
+    if "mesh" not in st.session_state:
+        st.error("Upload a 3D Object" + errorMsg)
+        _flag = False
+    if "cam_json" not in st.session_state:
+        st.error("Something went wrong, try again")
+        _flag = False
+    if _flag:
         st.switch_page(st.session_state.pose_pg)

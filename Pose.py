@@ -21,159 +21,184 @@ import trimesh
 # Converting to base64
 # Creating numpy array followed by cv2 image for pose display
 
-buffered_img = BytesIO()
-st.session_state.img.save(buffered_img, format="PNG")
-img_base64 = base64.b64encode(buffered_img.getvalue()).decode("utf-8")
-img_array = np.frombuffer(base64.b64decode(img_base64), np.uint8)
-img_cv2 = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-w, h = st.session_state.img_width, st.session_state.img_height
+errorMsg = ", and come back to this page to run foundation pose"
+_flag = True
 
-buffered_depth = BytesIO()
-st.session_state.depthMap.save(buffered_depth, format="PNG")
-depth_base64 = base64.b64encode(buffered_depth.getvalue()).decode("utf-8")
-depth_array = np.frombuffer(base64.b64decode(depth_base64), np.uint8)
-depth_cv2 = cv2.imdecode(depth_array, cv2.IMREAD_UNCHANGED)
+if (
+    "img" not in st.session_state
+    or "img_height" not in st.session_state
+    or "img_width" not in st.session_state
+    or "filename" not in st.session_state
+):
+    st.error("Upload a RGB Image" + errorMsg)
+    _flag = False
+if "depthMap" not in st.session_state:
+    st.error("Upload a depth map" + errorMsg)
+    _flag = False
+if "roi" not in st.session_state:
+    st.error("Upload a mask" + errorMsg)
+    _flag = False
+if "mesh" not in st.session_state:
+    st.error("Upload a 3D Object" + errorMsg)
+    _flag = False
+if "cam_json" not in st.session_state:
+    st.error("Upload Camera Intrinsics" + errorMsg)
+    _flag = False
+    
+if _flag:
+    buffered_img = BytesIO()
+    st.session_state.img.save(buffered_img, format="PNG")
+    img_base64 = base64.b64encode(buffered_img.getvalue()).decode("utf-8")
+    img_array = np.frombuffer(base64.b64decode(img_base64), np.uint8)
+    img_cv2 = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    w, h = st.session_state.img_width, st.session_state.img_height
 
-buffered_roi = BytesIO()
-st.session_state.roi.save(buffered_roi, format="PNG")
-roi_base64 = base64.b64encode(buffered_roi.getvalue()).decode("utf-8")
-roi_array = np.frombuffer(base64.b64decode(roi_base64), np.uint8)
-roi_cv2 = cv2.imdecode(roi_array, cv2.IMREAD_GRAYSCALE)  # binary mask of object
+    buffered_depth = BytesIO()
+    st.session_state.depthMap.save(buffered_depth, format="PNG")
+    depth_base64 = base64.b64encode(buffered_depth.getvalue()).decode("utf-8")
+    depth_array = np.frombuffer(base64.b64decode(depth_base64), np.uint8)
+    depth_cv2 = cv2.imdecode(depth_array, cv2.IMREAD_UNCHANGED)
 
-obj_base64 = base64.b64encode(st.session_state.mesh).decode("utf-8")
-mesh_bytes = st.session_state.mesh
-mesh_io = BytesIO(mesh_bytes)
+    buffered_roi = BytesIO()
+    st.session_state.roi.save(buffered_roi, format="PNG")
+    roi_base64 = base64.b64encode(buffered_roi.getvalue()).decode("utf-8")
+    roi_array = np.frombuffer(base64.b64decode(roi_base64), np.uint8)
+    roi_cv2 = cv2.imdecode(roi_array, cv2.IMREAD_GRAYSCALE)  # binary mask of object
 
-K = st.session_state.cam_json[
-    "intrinsics"
-]  # e.g., [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
-depth_scale = st.session_state.cam_json[
-    "depthscale"
-]  # e.g., if depth is in mm, scale to meters
+    obj_base64 = base64.b64encode(st.session_state.mesh).decode("utf-8")
+    mesh_bytes = st.session_state.mesh
+    mesh_io = BytesIO(mesh_bytes)
+
+    K = st.session_state.cam_json[
+        "intrinsics"
+    ]  # e.g., [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
+    depth_scale = st.session_state.cam_json[
+        "depthscale"
+    ]  # e.g., if depth is in mm, scale to meters
 
 
-request_dict = {
-    "camera_matrix": K,
-    "images": [
-        {
-            "filename": st.session_state.filename,
-            "rgb": img_base64,
-            "depth": depth_base64,
-        }
-    ],
-    "mesh": obj_base64,
-    "mask": roi_base64,
-    "depthscale": depth_scale,
-}
+    request_dict = {
+        "camera_matrix": K,
+        "images": [
+            {
+                "filename": st.session_state.filename,
+                "rgb": img_base64,
+                "depth": depth_base64,
+            }
+        ],
+        "mesh": obj_base64,
+        "mask": roi_base64,
+        "depthscale": depth_scale,
+    }
 
-request = json.dumps(request_dict)
+    request = json.dumps(request_dict)
 
-url = "http://localhost:5000/foundationpose"
+    url = "http://localhost:5000/foundationpose"
 
-try:
-    response = requests.post(url, json=request)
+    try:
+        response = requests.post(url, json=request)
 
-    if response.status_code == 200:
-        response_json = response.json()
-        st.write(response_json)
+        if response.status_code == 200:
+            response_json = response.json()
+            st.write(response_json)
 
-        K = np.array(K)
+            K = np.array(K)
 
-        fx, fy = K[0, 0], K[1, 1]
-        cx, cy = K[0, 2], K[1, 2]
+            fx, fy = K[0, 0], K[1, 1]
+            cx, cy = K[0, 2], K[1, 2]
 
-        camera = pyrender.IntrinsicsCamera(fx=fx, fy=fy, cx=cx, cy=cy)
+            camera = pyrender.IntrinsicsCamera(fx=fx, fy=fy, cx=cx, cy=cy)
 
-        # FUNCTIONS
-        def project_point(point, K):
-            x, y, z = point
-            u = (K[0, 0] * x / z) + K[0, 2]
-            v = (K[1, 1] * y / z) + K[1, 2]
-            return int(round(u)), int(round(v))
+            # FUNCTIONS
+            def project_point(point, K):
+                x, y, z = point
+                u = (K[0, 0] * x / z) + K[0, 2]
+                v = (K[1, 1] * y / z) + K[1, 2]
+                return int(round(u)), int(round(v))
 
-        def draw_axes_on_image(image, K, R, t, axis_len=0.1):
-            img = image.copy()
-            origin = t.flatten()
+            def draw_axes_on_image(image, K, R, t, axis_len=0.1):
+                img = image.copy()
+                origin = t.flatten()
 
-            axes = [origin + R[:, i] * axis_len for i in range(3)]  # X, Y, Z
-            colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0)]  # BGR
-            origin_2d = project_point(origin, K)
+                axes = [origin + R[:, i] * axis_len for i in range(3)]  # X, Y, Z
+                colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0)]  # BGR
+                origin_2d = project_point(origin, K)
 
-            for pt, color in zip(axes, colors):
-                pt_2d = project_point(pt, K)
-                cv2.line(img, origin_2d, pt_2d, color, 2)
+                for pt, color in zip(axes, colors):
+                    pt_2d = project_point(pt, K)
+                    cv2.line(img, origin_2d, pt_2d, color, 2)
 
-            return img
+                return img
 
-        trimesh_obj = trimesh.load(mesh_io, file_type="ply")
-        mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
+            trimesh_obj = trimesh.load(mesh_io, file_type="ply")
+            mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
 
-        T = np.array(response_json["transformation_matrix"])
+            T = np.array(response_json["transformation_matrix"])
 
-        # Extract rotation
-        R = T[:3, :3]
-        t = T[:3, 3].reshape(3, 1)
+            # Extract rotation
+            R = T[:3, :3]
+            t = T[:3, 3].reshape(3, 1)
 
-        transformed = (
-            np.array(
-                [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
-                dtype=np.float32,
+            transformed = (
+                np.array(
+                    [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
+                    dtype=np.float32,
+                )
+                @ T
+            )  # Transformation to account for axes negation
+
+            world = np.eye(4)
+
+            # === Load 3D mesh ===
+            trimesh_obj.apply_scale(0.001)
+            mesh = pyrender.Mesh.from_trimesh(trimesh_obj, smooth=False)
+
+            # === Scene Setup ===
+            scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3])
+            scene.add(camera, pose=world)
+            scene.add(mesh, pose=transformed)
+            camera = pyrender.IntrinsicsCamera(fx, fy, cx, cy, znear=0.001, zfar=10.0)
+
+            light = pyrender.DirectionalLight(color=np.ones(3), intensity=2.0)
+            scene.add(light, pose=transformed)
+
+            # === Render Offscreen ===
+            r = pyrender.OffscreenRenderer(viewport_width=w, viewport_height=h)
+            color, depth = r.render(scene)
+            r.delete()
+
+            # === Load background RGB image
+            bg = img_cv2
+            bg = cv2.resize(bg, (w, h))
+            bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+
+            # === Create mask from depth (where model is visible)
+            mask = depth > 0
+
+            # === Composite model onto background
+            composite = bg.copy()
+            composite[mask] = color[mask]
+
+            # === Save result
+            overlay = draw_axes_on_image(composite, K, R, t)
+
+            st.image(overlay, cv2.COLOR_RGB2BGR)
+
+            buffer = BytesIO()
+            overlay.save(
+                buffer, format="PNG"
+            )  # Provisional file creation, if user wishes to download
+            buffer.seek(0)
+
+            st.download_button(
+                label="Download Pose",
+                data=buffer,
+                file_name=f"{st.session_state.filename}_pose.png",
+                mime="image/png",
+                icon=":material/download:",
             )
-            @ T
-        )  # Transformation to account for axes negation
 
-        world = np.eye(4)
-
-        # === Load 3D mesh ===
-        trimesh_obj.apply_scale(0.001)
-        mesh = pyrender.Mesh.from_trimesh(trimesh_obj, smooth=False)
-
-        # === Scene Setup ===
-        scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3])
-        scene.add(camera, pose=world)
-        scene.add(mesh, pose=transformed)
-        camera = pyrender.IntrinsicsCamera(fx, fy, cx, cy, znear=0.001, zfar=10.0)
-
-        light = pyrender.DirectionalLight(color=np.ones(3), intensity=2.0)
-        scene.add(light, pose=transformed)
-
-        # === Render Offscreen ===
-        r = pyrender.OffscreenRenderer(viewport_width=w, viewport_height=h)
-        color, depth = r.render(scene)
-        r.delete()
-
-        # === Load background RGB image
-        bg = img_cv2
-        bg = cv2.resize(bg, (w, h))
-        bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-
-        # === Create mask from depth (where model is visible)
-        mask = depth > 0
-
-        # === Composite model onto background
-        composite = bg.copy()
-        composite[mask] = color[mask]
-
-        # === Save result
-        overlay = draw_axes_on_image(composite, K, R, t)
-
-        st.image(overlay, cv2.COLOR_RGB2BGR)
-
-        buffer = BytesIO()
-        overlay.save(
-            buffer, format="PNG"
-        )  # Provisional file creation, if user wishes to download
-        buffer.seek(0)
-
-        st.download_button(
-            label="Download Pose",
-            data=buffer,
-            file_name=f"{st.session_state.filename}_pose.png",
-            mime="image/png",
-            icon=":material/download:",
-        )
-
-    else:
-        st.error("Error! JSON Responsde Code: " + str(response.status_code))
-except:
-    st.error("Failed to establish connection. Check URL and/or server status.")
+        else:
+            st.error("Error! JSON Responsde Code: " + str(response.status_code))
+    except:
+        st.error("Failed to establish connection. Check URL and/or server status.")
