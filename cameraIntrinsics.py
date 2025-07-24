@@ -131,7 +131,7 @@ with r2col1:
 
 if st.button("Run Foundation Pose"):
     errorMsg = ", and come back to this page to run foundation pose"
-    _flag = True
+    _flag = _flag2 = True
 
     if depthscale_val == 0:
         st.error("Depthscale is 0")
@@ -146,10 +146,10 @@ if st.button("Run Foundation Pose"):
         or "filename" not in st.session_state
     ):
         st.error("Upload a RGB Image" + errorMsg)
-        _flag = False
+        _flag = _flag2 = False
     if "depthMap" not in st.session_state:
         st.error("Upload a depth map" + errorMsg)
-        _flag = False
+        _flag = _flag2 = False
     if "roi" not in st.session_state:
         st.error("Upload a mask" + errorMsg)
         _flag = False
@@ -159,5 +159,9 @@ if st.button("Run Foundation Pose"):
     if "cam_json" not in st.session_state:
         st.error("Something went wrong, try again")
         _flag = False
+    if _flag2 and (len(st.session_state.img) != len(st.session_state.depthMap)):
+        st.error("Number of RBG images must be the same as number of depth maps")
+        _flag = False
+    
     if _flag:
         st.switch_page(st.session_state.pose_pg)

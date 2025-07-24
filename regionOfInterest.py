@@ -25,13 +25,13 @@ with st.container(key="draw", border=True):
     st.write("Scroll down to see the mask")
     drawing_mode = st.sidebar.selectbox(
         "Drawing tool:", ("point", "freedraw", "line", "rect", "circle", "transform")
-    )  # default drawimg mode
+    )  # default drawing mode
 
     stroke_width = st.sidebar.slider("Stroke width: ", 1, 25, 3)  # default stroke width
     if drawing_mode == "point":
         point_display_radius = st.sidebar.slider("Point display radius: ", 1, 25, 3)
 
-    bg_image = st.session_state.img
+    bg_image = st.session_state.img[0]
     final_bw = Image.new(
         "RGBA", (st.session_state.img_width, st.session_state.img_height), (0, 0, 0)
     ).convert(
