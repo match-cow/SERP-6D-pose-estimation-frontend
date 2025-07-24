@@ -194,7 +194,7 @@ if _flag:
 
                 # === Save result
                 overlay = draw_axes_on_image(composite, K, R, t)
-                overlay = cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
+                #overlay = cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
 
                 st.image(overlay)
                 filename = st.session_state.filename[i]
