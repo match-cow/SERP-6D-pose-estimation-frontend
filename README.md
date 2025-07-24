@@ -25,15 +25,21 @@ To get started with the application, follow these steps:
     pip install -r requirements.txt
     ```
 
-**Note on Streamlit Version:**
+3. **Note on Streamlit Version:**
 Upgrading Streamlit to versions above `1.40.0` will currently break the canvas component, which affects the custom mask drawing feature. If using a newer Streamlit version is necessary, please modify `regionOfInterest.py` by removing all code after line 22.
+
+4. **Running in Headless Environments:**
+The OpenGL platform needs to be set to egl before running in headless environments. To do so, add this code in `pose.py` before importing trimesh or pyrender. It is the same code as the commented lines 14-15.
+```import os
+os.environ["PYOPENGL_PLATFORM"] = "egl"
+```
 
 ## 🚀 Application Flow
 
 The application guides the user through the following steps to perform 6D pose estimation:
 
-1.  **Upload RGB Image:** The user uploads a **PNG** format RGB image.
-2.  **Upload Depth Map:** The user uploads a **PNG** format greyscale depth map.
+1.  **Upload RGB Image:** The user uploads RGB images in **PNG** format.
+2.  **Upload Depth Map:** The user uploads greyscale depth maps in **PNG** format .
 3.  **Region of Interest (ROI):** The user can choose to either:
     * Upload an existing mask image.
     * Draw a custom mask directly over the uploaded RGB image using the provided drawing tools.
@@ -44,7 +50,7 @@ The application guides the user through the following steps to perform 6D pose e
     * Manually type the intrinsic values into the provided fields.
     Regardless of the input method, the user can review and modify the intrinsics and view an updated JSON representation before proceeding.
 6.  **Pose Estimation:** The application sends a request to the backend API with all the provided data and images to run FoundationPose.
-7.  **Display Results:** If the request is successful, an image displaying the 6D pose of the object (rendered on the input image) will be shown. The user can then download this generated image.
+7.  **Display Results:** If the request is successful, images displaying the 6D pose of the object (rendered on the input images) will be shown. The user can then download all of these generated images in a zip file.
 
 ## 📄 JSON Formats
 
@@ -79,10 +85,15 @@ This JSON structure is sent to the pose estimation API.
     ],
     "images": [
         {
-            "filename": "string",
+            "filename": "file#1",
             "rgb": "base64 encoded rgb image",
             "depth": "base64 encoded depth map"
-        }
+        },
+        {
+            "filename": "file#2",
+            "rgb": "base64 encoded rgb image",
+            "depth": "base64 encoded depth map"
+        }, ...
     ],
     "mesh": "base64 encoded mesh",
     "mask": "base64 encoded mask",

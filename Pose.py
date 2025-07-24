@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 import zipfile
 
-# Use the commented code below if running on a headless environment.
+# Use the commented code below if running in a headless environment.
 # Ensure to run the code BEFORE importing trimesh and pyrender.
 
 # import os
@@ -16,11 +16,6 @@ import zipfile
 
 import pyrender
 import trimesh
-
-# General format for images:
-# Creating BytesIO() object
-# Converting to base64
-# Creating numpy array followed by cv2 image for pose display
 
 errorMsg = ", and come back to this page to run foundation pose"
 _flag = _flag2 = True
@@ -79,7 +74,9 @@ if _flag:
         st.session_state.img[i].save(buffered_img, format="PNG")
         img_base64 = base64.b64encode(buffered_img.getvalue()).decode("utf-8")
         img_array = np.frombuffer(base64.b64decode(img_base64), np.uint8)
-        img_cv2.append(cv2.imdecode(img_array, cv2.IMREAD_COLOR))
+        img_cv2.append(
+            cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        )  # each image is needed later on to make overlays; hence storing it in a list
 
         buffered_depth = BytesIO()
         st.session_state.depthMap[i].save(buffered_depth, format="PNG")
@@ -89,9 +86,9 @@ if _flag:
             {
                 "filename": st.session_state.filename[i],
                 "rgb": img_base64,
-                "depth": depth_base64
+                "depth": depth_base64,
             }
-        )
+        )  # creating a list of dictionaries to be passed in the request. Refer to request format
     request_dict = {
         "camera_matrix": K,
         "images": images_json,
@@ -109,8 +106,8 @@ if _flag:
         response = requests.post(url, json=request)
     except:
         st.error("Failed to establish connection. Check URL and/or server status.")
-    else:
-        if response.status_code == 200:
+    else:  # to avoid wrong error message if anything apart from request fails.
+        if response.status_code == 200:  # 200 is success code
             response_json = response.json()
             st.write("Response")
             st.json(response_json, expanded=1)
@@ -158,7 +155,7 @@ if _flag:
                 )  # Transformation to account for axes negation
 
                 world = np.eye(4)
-                
+                mesh_io.seek(0)
                 trimesh_obj = trimesh.load(mesh_io, file_type="ply")
                 mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
 
@@ -167,10 +164,14 @@ if _flag:
                 mesh = pyrender.Mesh.from_trimesh(trimesh_obj, smooth=False)
 
                 # === Scene Setup ===
-                scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3])
+                scene = pyrender.Scene(
+                    bg_color=[0, 0, 0, 0], ambient_light=[0.3, 0.3, 0.3]
+                )
                 scene.add(camera, pose=world)
                 scene.add(mesh, pose=transformed)
-                camera = pyrender.IntrinsicsCamera(fx, fy, cx, cy, znear=0.001, zfar=10.0)
+                camera = pyrender.IntrinsicsCamera(
+                    fx, fy, cx, cy, znear=0.001, zfar=10.0
+                )
 
                 light = pyrender.DirectionalLight(color=np.ones(3), intensity=2.0)
                 scene.add(light, pose=transformed)
@@ -194,18 +195,23 @@ if _flag:
 
                 # === Save result
                 overlay = draw_axes_on_image(composite, K, R, t)
-                #overlay = cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
 
                 st.image(overlay)
                 filename = st.session_state.filename[i]
                 try:
-                    success, buffer = cv2.imencode(".png", overlay)
+                    success, buffer = cv2.imencode(
+                        ".png", cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
+                    )  # converting cv2 image to png
                     if success:
-                        img_bytes = buffer.tobytes()
+                        img_bytes = buffer.tobytes()  # storing png bytes
                         overlays[filename + ".png"] = img_bytes
                 except:
-                    st.error("An error occured while tring to convert the overlay for "+filename+" to an image")
-                
+                    st.error(
+                        "An error occured while tring to convert the overlay for "
+                        + filename
+                        + " to an image"
+                    )
+
             buffer = BytesIO()
             with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip:
                 for name, file in overlays.items():
