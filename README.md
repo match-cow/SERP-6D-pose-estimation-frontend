@@ -30,9 +30,9 @@ Upgrading Streamlit to versions above `1.40.0` will currently break the canvas c
 
 4. **Running in Headless Environments:**
 The OpenGL platform needs to be set to egl before running in headless environments. To do so, add this code in `pose.py` before importing trimesh or pyrender. It is the same code as the commented lines 14-15.
-```import os
-os.environ["PYOPENGL_PLATFORM"] = "egl"
-```
+    ```import os
+    os.environ["PYOPENGL_PLATFORM"] = "egl"
+    ```
 
 ## 🚀 Application Flow
 
