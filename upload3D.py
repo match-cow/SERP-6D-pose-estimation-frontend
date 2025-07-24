@@ -26,9 +26,6 @@ with st.container(key="upload", border=True):
         mesh = o3d.io.read_triangle_mesh(temp_file_path)
         mesh.compute_vertex_normals()
 
-        print("start2", st.session_state.mesh, "session state")
-        print(mesh, "var")
-
         # Providing some feedback since displaying the 3D Model is not possible
         st.write(f"- Vertices: {len(mesh.vertices)}")
         st.write(f"- Normals: {len(mesh.vertex_normals)}")
