@@ -117,8 +117,6 @@ if _flag:
             fx, fy = K[0, 0], K[1, 1]
             cx, cy = K[0, 2], K[1, 2]
 
-            camera = pyrender.IntrinsicsCamera(fx=fx, fy=fy, cx=cx, cy=cy)
-
             # FUNCTIONS
             def project_point(point, K):
                 x, y, z = point
@@ -156,6 +154,7 @@ if _flag:
 
                 world = np.eye(4)
                 mesh_io.seek(0)
+                camera = pyrender.IntrinsicsCamera(fx=fx, fy=fy, cx=cx, cy=cy)
                 trimesh_obj = trimesh.load(mesh_io, file_type="ply")
                 mesh = pyrender.Mesh.from_trimesh(trimesh_obj)  # Required step
 
